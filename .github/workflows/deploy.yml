@@ -16,22 +16,6 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Validate Secrets
-        run: |
-          if [ -z "${{ secrets.BACKEND_DOT_ENV }}" ]; then
-            echo "ERROR: BACKEND_DOT_ENV secret is MISSING or EMPTY!"
-            exit 1
-          fi
-          if [ -z "${{ secrets.SERVICE_ACCOUNT_JSON }}" ]; then
-            echo "ERROR: SERVICE_ACCOUNT_JSON secret is MISSING or EMPTY!"
-            exit 1
-          fi
-
-      - name: Create environment files
-        run: |
-          echo "${{ secrets.BACKEND_DOT_ENV }}" > .env
-          echo '${{ secrets.SERVICE_ACCOUNT_JSON }}' > service-account.json
-
       - name: Copy code to VM
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -49,39 +33,38 @@ jobs:
           host: ${{ secrets.VM_IP }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # Pass secrets as environment variables into the SSH session
+          envs: BACKEND_DOT_ENV,SERVICE_ACCOUNT_JSON
           script: |
             # Explicitly source profile to find Node/NVM/PM2
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" 
             source ~/.bashrc || source ~/.profile || true
-            
-            echo "--- DEBUG INFO ---"
-            echo "Current User: $(whoami)"
-            echo "Target Dir: ~/AccodigiBackend"
-            
+
             # Create project directory
             mkdir -p ~/AccodigiBackend
-            
+
             # Sync files
-            cp -rv ~/AccodigiBackend_temp/* ~/AccodigiBackend/
-            
+            cp -r ~/AccodigiBackend_temp/* ~/AccodigiBackend/
+
             cd ~/AccodigiBackend
-            echo "Now in: $(pwd)"
-            echo "Files here:"
-            ls -la
-            
-            if [ -f .env ]; then
-              echo "✅ .env exists. Size: $(wc -c < .env) bytes."
-            else
-              echo "❌ .env MISSING in $(pwd)"
-            fi
-            
-            # Install dependencies and build
+
+            # Write secrets directly via SSH (bypasses SCP dotfile issue)
+            printf '%s' "$BACKEND_DOT_ENV" > .env
+            printf '%s' "$SERVICE_ACCOUNT_JSON" > service-account.json
+
+            # Verify
+            echo ".env size: $(wc -c < .env) bytes"
+
+            # Install dependencies
             npm install
             npx prisma generate
             npx prisma migrate deploy
-            
-            # Restart service with PM2
+
+            # Restart with PM2
             pm2 delete truelog-backend || true
             pm2 start server.js --name truelog-backend
             pm2 save
+        env:
+          BACKEND_DOT_ENV: ${{ secrets.BACKEND_DOT_ENV }}
+          SERVICE_ACCOUNT_JSON: ${{ secrets.SERVICE_ACCOUNT_JSON }}
