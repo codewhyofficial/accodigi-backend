@@ -53,6 +53,12 @@ app.use(cookieParser());
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
+// Request Logger for Debugging
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Origin: ${req.get('origin')}`);
+    next();
+});
+
 app.use(morgan('dev'));
 
 // Serve uploaded media files
