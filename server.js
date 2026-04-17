@@ -24,8 +24,17 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+const ALLOWED_ORIGINS = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'https://accodigi.com',
+    'https://www.accodigi.com',
+    'https://truelog.in',
+    'https://www.truelog.in'
+];
+
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 'https://truelog.in', 'https://www.truelog.in'],
+    origin: ALLOWED_ORIGINS,
     credentials: true,
 }));
 app.use(helmet({
