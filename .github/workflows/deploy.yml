@@ -57,5 +57,9 @@ jobs:
             npx prisma generate
             npx prisma migrate deploy
             
-            # Restart service with PM2
-            pm2 restart truelog-backend || pm2 start server.js --name truelog-backend
+            # Debug: verify .env existence
+            ls -la ~/AccodigiBackend/.env
+            
+            # Restart service with PM2 (Delete and Start is more robust for env changes)
+            pm2 delete truelog-backend || true
+            pm2 start server.js --name truelog-backend --watch
