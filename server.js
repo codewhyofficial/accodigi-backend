@@ -20,10 +20,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Configs
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
+// CORS — Must be at the VERY TOP to handle preflight (OPTIONS) requests
 const ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://localhost:5174',
@@ -34,9 +31,25 @@ const ALLOWED_ORIGINS = [
 ];
 
 app.use(cors({
-    origin: ALLOWED_ORIGINS,
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl)
+        if (!origin) return callback(null, true);
+        if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.error(`CORS Blocked for origin: ${origin}`);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Configs
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
