@@ -53,6 +53,9 @@ jobs:
             echo "${{ secrets.BACKEND_DOT_ENV }}" > .env
             echo '${{ secrets.SERVICE_ACCOUNT_JSON }}' > service-account.json
             
+            # Debug: check if .env has content (without showing secrets)
+            if [ ! -s .env ]; then echo "WARNING: .env is EMPTY. Check your GitHub Secrets!"; fi
+            
             # Install dependencies and build
             npm install
             npx prisma generate
