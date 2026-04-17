@@ -1,0 +1,182 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model CA {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      CARole   @default(ADMIN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clients             Client[]
+  refreshTokens       RefreshToken[]
+}
+
+enum CARole {
+  ADMIN
+  STAFF
+}
+
+model Client {
+  id          String       @id @default(uuid())
+  name        String
+  phoneNumber String       @unique // Normalized e.g., 919876543210
+  gstin       String       @unique
+  status      ClientStatus @default(PENDING)
+  filingMonth Int?
+  filingYear  Int?
+  caId        String
+  ca          CA           @relation(fields: [caId], references: [id])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  bankStatements   BankStatement[]
+  processedPages   ProcessedPage[]
+  transferRequests TransferRequest[]
+  bankAccounts     BankAccount[]
+
+  // Onboarding Fields
+  usageType        String?  // Personal / Client Use
+  businessStructure String?  // Ltd, Sole Trader, etc.
+  country          String?  @default("UK")
+  natureOfBusiness String?  // e.g., "Consultancy", "E-commerce"
+  primaryGoal      String?  // Tax Preparation / OCR Only
+}
+
+enum ClientStatus {
+  PENDING
+  ACTIVE
+  TRANSFERRED
+}
+
+model TransferRequest {
+  id         String         @id @default(uuid())
+  clientId   String
+  client     Client         @relation(fields: [clientId], references: [id])
+  targetCaId String // The CA ID requesting transfer (if applicable) or just tracking
+  status     TransferStatus @default(PENDING)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+}
+
+enum TransferStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  caId      String
+  ca        CA       @relation(fields: [caId], references: [id])
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revoked   Boolean  @default(false)
+}
+
+model Admin {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String
+  name      String?
+  role      AdminRole @default(ADMIN)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+enum AdminRole {
+  ADMIN
+  OWNER
+}
+
+model BankStatement {
+  id             String        @id @default(uuid())
+  clientId       String
+  client         Client        @relation(fields: [clientId], references: [id])
+  fileUrl        String
+  fileName       String
+  status         BankStatementStatus @default(PROCESSED)
+  pageCount      Int           @default(0)
+  openingBalance Float?
+  closingBalance Float?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  currency       String        @default("INR")
+
+  transactions BankTransaction[]
+
+  bankAccountId String?
+  bankAccount   BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+
+}
+
+enum BankStatementStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+model BankAccount {
+  id            String   @id @default(uuid())
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id])
+  accountNumber String?
+  bankName      String?
+  currency      String   @default("GBP")
+  balance       Float    @default(0)
+  accountType   String?  // Current, Savings, etc.
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  statements BankStatement[]
+
+  @@unique([clientId, accountNumber])
+}
+
+model BankTransaction {
+  id              String          @id @default(uuid())
+  bankStatementId String
+  bankStatement   BankStatement   @relation(fields: [bankStatementId], references: [id], onDelete: Cascade)
+  date            DateTime
+  description     String
+  amount          Float
+  type            TransactionType
+  balance         Float?
+  createdAt       DateTime        @default(now())
+
+  // AI Generated fields
+  supplierName    String?
+  category        String?
+  aiCommentary    String?
+}
+
+enum TransactionType {
+  DEBIT
+  CREDIT
+}
+
+model ProcessedPage {
+  id        String   @id @default(uuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id])
+  caId      String
+  type      PageType
+  count     Int
+  createdAt DateTime @default(now())
+}
+
+enum PageType {
+  BANK_STATEMENT
+}

@@ -1,0 +1,49 @@
+{
+    "name": "truelog-backend",
+    "version": "1.0.0",
+    "description": "TrueLog Backend API",
+    "type": "module",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "nodemon server.js",
+        "verify-token": "node scripts/verify-token.mjs",
+        "register-phone": "node scripts/register-phone.mjs",
+        "request-code": "node scripts/request-code.mjs",
+        "verify-code": "node scripts/verify-code.mjs",
+        "send-test-message": "node scripts/send-test-message.mjs",
+        "check-status": "node scripts/check-status.mjs"
+    },
+    "dependencies": {
+        "@google-cloud/vision": "^5.3.4",
+        "@google/genai": "^1.48.0",
+        "@google/generative-ai": "^0.24.1",
+        "@prisma/client": "^6.19.2",
+        "adm-zip": "^0.5.16",
+        "axios": "^1.13.5",
+        "bcryptjs": "^3.0.3",
+        "cookie-parser": "^1.4.7",
+        "cors": "^2.8.6",
+        "dotenv": "^16.6.1",
+        "exceljs": "^4.4.0",
+        "express": "^5.2.1",
+        "helmet": "^8.1.0",
+        "joi": "^18.0.2",
+        "jsonwebtoken": "^9.0.3",
+        "morgan": "^1.10.1",
+        "multer": "^2.0.2",
+        "node-fetch": "^3.3.2",
+        "pdf-parse": "^2.4.5",
+        "request-ip": "^3.3.0",
+        "sarvamai": "^1.1.4",
+        "winston": "^3.19.0",
+        "xmlbuilder2": "^4.0.3"
+    },
+    "devDependencies": {
+        "nodemon": "^3.0.3",
+        "prisma": "^6.19.2"
+    },
+    "main": "server.js",
+    "keywords": [],
+    "author": "",
+    "license": "ISC"
+}
