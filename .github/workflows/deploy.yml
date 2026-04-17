@@ -16,6 +16,17 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Validate Secrets
+        run: |
+          if [ -z "${{ secrets.BACKEND_DOT_ENV }}" ]; then
+            echo "ERROR: BACKEND_DOT_ENV secret is MISSING or EMPTY!"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SERVICE_ACCOUNT_JSON }}" ]; then
+            echo "ERROR: SERVICE_ACCOUNT_JSON secret is MISSING or EMPTY!"
+            exit 1
+          fi
+
       - name: Create environment files
         run: |
           echo "${{ secrets.BACKEND_DOT_ENV }}" > .env
