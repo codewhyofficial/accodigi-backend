@@ -16,18 +16,21 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Create environment files
+        run: |
+          echo "${{ secrets.BACKEND_DOT_ENV }}" > .env
+          echo '${{ secrets.SERVICE_ACCOUNT_JSON }}' > service-account.json
+
       - name: Copy code to VM
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VM_IP }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          # Exclude node_modules and other unneeded files
-          # We copy to a temporary directory first
           source: "./*"
           target: "~/AccodigiBackend_temp"
           rm: true
-          exclude: "node_modules, .git, .github, .env, service-account.json"
+          exclude: "node_modules, .git, .github"
 
       - name: Post-deployment setup on VM
         uses: appleboy/ssh-action@v1.0.3
@@ -48,13 +51,6 @@ jobs:
             cp -r ~/AccodigiBackend_temp/* ~/AccodigiBackend/
             
             cd ~/AccodigiBackend
-            
-            # Setup environment and secrets
-            echo "${{ secrets.BACKEND_DOT_ENV }}" > .env
-            echo '${{ secrets.SERVICE_ACCOUNT_JSON }}' > service-account.json
-            
-            # Debug: check if .env has content (without showing secrets)
-            if [ ! -s .env ]; then echo "WARNING: .env is EMPTY. Check your GitHub Secrets!"; fi
             
             # Install dependencies and build
             npm install
