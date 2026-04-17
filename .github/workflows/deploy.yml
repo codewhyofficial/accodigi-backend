@@ -36,6 +36,11 @@ jobs:
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            # Explicitly source profile to find Node/NPM/PM2
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" 
+            source ~/.bashrc || source ~/.profile || true
+            
             # Create project directory if it doesn't exist
             mkdir -p ~/AccodigiBackend
             
