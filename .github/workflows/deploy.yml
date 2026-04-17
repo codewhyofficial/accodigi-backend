@@ -39,27 +39,38 @@ jobs:
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Explicitly source profile to find Node/NPM/PM2
+            # Explicitly source profile to find Node/NVM/PM2
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" 
             source ~/.bashrc || source ~/.profile || true
             
-            # Create project directory if it doesn't exist
+            echo "--- DEBUG INFO ---"
+            echo "Current User: $(whoami)"
+            echo "Target Dir: ~/AccodigiBackend"
+            
+            # Create project directory
             mkdir -p ~/AccodigiBackend
             
-            # Sync temp files to project directory
-            cp -r ~/AccodigiBackend_temp/* ~/AccodigiBackend/
+            # Sync files
+            cp -rv ~/AccodigiBackend_temp/* ~/AccodigiBackend/
             
             cd ~/AccodigiBackend
+            echo "Now in: $(pwd)"
+            echo "Files here:"
+            ls -la
+            
+            if [ -f .env ]; then
+              echo "✅ .env exists. Size: $(wc -c < .env) bytes."
+            else
+              echo "❌ .env MISSING in $(pwd)"
+            fi
             
             # Install dependencies and build
             npm install
             npx prisma generate
             npx prisma migrate deploy
             
-            # Debug: verify .env existence
-            ls -la ~/AccodigiBackend/.env
-            
-            # Restart service with PM2 (Delete and Start is more robust for env changes)
+            # Restart service with PM2
             pm2 delete truelog-backend || true
-            pm2 start server.js --name truelog-backend --watch
+            pm2 start server.js --name truelog-backend
+            pm2 save
