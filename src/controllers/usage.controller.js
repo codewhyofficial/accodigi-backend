@@ -20,3 +20,13 @@ export const getUsageHistory = catchAsync(async (req, res) => {
         data: { history }
     });
 });
+
+export const getPerClientSummary = catchAsync(async (req, res) => {
+    const caId = req.user.id;
+    const summary = await usageService.getPerClientSummary(caId);
+
+    res.status(200).json({
+        status: 'success',
+        data: { summary }
+    });
+});

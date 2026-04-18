@@ -53,7 +53,15 @@ export const extractTextFromImage = async (imageBuffer) => {
             ],
         });
 
-        return response.text.trim();
+        const usage = response.usageMetadata || { promptTokenCount: 0, candidatesTokenCount: 0 };
+        return {
+            text: response.text.trim(),
+            usage: {
+                promptTokens: usage.promptTokenCount,
+                completionTokens: usage.candidatesTokenCount,
+                totalTokens: (usage.promptTokenCount || 0) + (usage.candidatesTokenCount || 0)
+            }
+        };
     } catch (err) {
         console.error('❌ Gemini text extraction failed:', err.message);
         throw new Error(`Text extraction failed: ${err.message}`);
@@ -77,12 +85,17 @@ export const extractStructuredData = async (prompt) => {
         });
 
         const responseText = response.text.trim();
-        let jsonStr = responseText;
-        if (jsonStr.startsWith('```')) {
-            jsonStr = jsonStr.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-        }
+        const jsonStr = responseText.startsWith('```') ? responseText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '') : responseText;
+        const usage = response.usageMetadata || { promptTokenCount: 0, candidatesTokenCount: 0 };
 
-        return JSON.parse(jsonStr);
+        return {
+            data: JSON.parse(jsonStr),
+            usage: {
+                promptTokens: usage.promptTokenCount,
+                completionTokens: usage.candidatesTokenCount,
+                totalTokens: (usage.promptTokenCount || 0) + (usage.candidatesTokenCount || 0)
+            }
+        };
     } catch (err) {
         console.error('❌ Gemini JSON extraction failed:', err.message);
         throw new Error(`AI Extraction failed: ${err.message}`);

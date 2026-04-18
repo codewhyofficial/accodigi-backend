@@ -23,40 +23,49 @@ export const uploadBankStatement = catchAsync(async (req, res) => {
     const results = [];
 
 
-    for (const file of req.files) {
-        const filePath = file.path;
-        const originalName = file.originalname;
+    const BATCH_SIZE = 1; // Reverted to 1 for maximum stability while under load
+    for (let i = 0; i < req.files.length; i += BATCH_SIZE) {
+        const batch = req.files.slice(i, i + BATCH_SIZE);
 
-        try {
-            const fileBuffer = await fs.readFile(filePath);
+        await Promise.all(batch.map(async (file) => {
+            const filePath = file.path;
+            const originalName = file.originalname;
+            const mimeType = file.mimetype;
 
-            // Ensure permanent directory exists
-            await fs.mkdir(UPLOADS_BS_DIR, { recursive: true }).catch(() => { });
-            const fileName = `${Date.now()}_${originalName.replace(/\s+/g, '_')}`;
-            const finalPath = path.join(UPLOADS_BS_DIR, fileName);
-            
-            // Save to permanent location
-            await fs.writeFile(finalPath, fileBuffer);
-            const fileUrl = `/media/bank-statements/${fileName}`;
+            try {
+                const fileBuffer = await fs.readFile(filePath);
 
-            // Process with AI
-            const statement = await bankStatementService.processBankStatement(clientId, caId, fileBuffer, originalName, fileUrl, password);
-            results.push(statement);
+                // Ensure permanent directory exists
+                await fs.mkdir(UPLOADS_BS_DIR, { recursive: true }).catch(() => { });
+                const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
+                const fileName = `${Date.now()}_${safeName}`;
+                const finalPath = path.join(UPLOADS_BS_DIR, fileName);
 
-        } catch (err) {
-            console.error(`Error processing file ${originalName}:`, err);
-            results.push({ filename: originalName, status: 'error', error: err.message });
-        } finally {
-            // Clean up temporary Multer file
-            await fs.unlink(filePath).catch(() => { });
-        }
+                // Save to permanent location
+                await fs.writeFile(finalPath, fileBuffer);
+                const fileUrl = `/media/bank-statements/${fileName}`;
+
+                // Process with AI — pass mimeType so service can route image vs PDF
+                const statement = await bankStatementService.processBankStatement(
+                    clientId, caId, fileBuffer, originalName, fileUrl, password, mimeType
+                );
+                results.push(statement);
+
+            } catch (err) {
+                console.error(`Error processing file ${originalName}:`, err.message);
+                results.push({ filename: originalName, status: 'error', error: err.message });
+            } finally {
+                // Clean up temporary Multer file
+                await fs.unlink(filePath).catch(() => { });
+            }
+        }));
     }
 
     res.status(200).json({
         status: 'success',
-        data: { 
+        data: {
             statements: results,
-            message: `${results.filter(r => !r.error).length} statements processed successfully` 
+            message: `${results.filter(r => !r.error).length} statements processed successfully`
         }
     });
 });
@@ -99,10 +108,10 @@ export const getTransactions = catchAsync(async (req, res) => {
         bankStatementIds = [bankStatementIds];
     }
 
-    const transactions = await bankStatementService.getTransactions(clientId, { 
-        startDate, 
-        endDate, 
-        type, 
+    const transactions = await bankStatementService.getTransactions(clientId, {
+        startDate,
+        endDate,
+        type,
         bankStatementIds,
         bankAccountId
     });
@@ -126,10 +135,10 @@ export const exportTransactions = catchAsync(async (req, res) => {
         bankStatementIds = [bankStatementIds];
     }
 
-    const buffer = await exportService.generateBankStatementExcel(clientId, { 
-        startDate, 
-        endDate, 
-        type, 
+    const buffer = await exportService.generateBankStatementExcel(clientId, {
+        startDate,
+        endDate,
+        type,
         bankStatementIds,
         bankAccountId,
         columns: req.query.columns ? (Array.isArray(req.query.columns) ? req.query.columns : req.query.columns.split(',')) : null
@@ -153,10 +162,10 @@ export const exportTransactionsCSV = catchAsync(async (req, res) => {
         bankStatementIds = [bankStatementIds];
     }
 
-    const buffer = await exportService.generateBankStatementCSV(clientId, { 
-        startDate, 
-        endDate, 
-        type, 
+    const buffer = await exportService.generateBankStatementCSV(clientId, {
+        startDate,
+        endDate,
+        type,
         bankStatementIds,
         bankAccountId,
         format: req.query.format || 'Custom',

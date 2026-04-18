@@ -8,5 +8,6 @@ router.use(protect);
 
 router.get('/totals', usageController.getProcessedPageTotals);
 router.get('/history', usageController.getUsageHistory);
+router.get('/per-client', usageController.getPerClientSummary);
 
 export default router;

@@ -27,7 +27,19 @@ export const protect = catchAsync(async (req, res, next) => {
     // 2) Verification token
     const decoded = await promisify(jwt.verify)(token, config.jwt.secret);
 
-    // 3) GRANT ACCESS TO PROTECTED ROUTE (Bypass redundant DB lookup for speed)
-    req.user = { id: decoded.id };
+    // 3) Check if user still exists
+    const currentUser = await prisma.cA.findUnique({
+        where: { id: decoded.id },
+        select: { id: true, name: true, email: true, role: true, totalCredits: true, usedCredits: true }
+    });
+
+    if (!currentUser) {
+        return next(
+            new AppError('The user belonging to this token no longer exists.', 401)
+        );
+    }
+
+    // 4) GRANT ACCESS TO PROTECTED ROUTE
+    req.user = currentUser;
     next();
 });

@@ -82,7 +82,9 @@ export const getAllCAs = async () => {
             createdAt: true,
             _count: {
                 select: { clients: true }
-            }
+            },
+            totalCredits: true,
+            usedCredits: true
         },
         orderBy: {
             createdAt: 'desc'
@@ -216,5 +218,66 @@ export const deleteCA = async (caId) => {
         prisma.cA.delete({ where: { id: caId } })
     ]);
 };
+export const getUsageStats = async (filters = {}) => {
+    const { caId, clientId, startDate, endDate } = filters;
+    const where = {};
+    if (caId) where.caId = caId;
+    if (clientId) where.clientId = clientId;
+    if (startDate || endDate) {
+        where.createdAt = {};
+        if (startDate) where.createdAt.gte = new Date(startDate);
+        if (endDate) where.createdAt.lte = new Date(endDate);
+    }
 
+    const [totalStats, perCaStats] = await Promise.all([
+        // Total summary
+        prisma.apiUsage.aggregate({
+            where,
+            _sum: {
+                inputTokens: true,
+                outputTokens: true,
+                imageCount: true
+            },
+            _count: true
+        }),
+        // Breakdown by CA
+        prisma.apiUsage.groupBy({
+            by: ['caId'],
+            where,
+            _sum: {
+                inputTokens: true,
+                outputTokens: true,
+                imageCount: true
+            },
+            _count: true
+        })
+    ]);
 
+    // Fetch CA names for the breakdown
+    const caIds = perCaStats.map(s => s.caId).filter(Boolean);
+    const cas = await prisma.cA.findMany({
+        where: { id: { in: caIds } },
+        select: { id: true, name: true, email: true }
+    });
+
+    const caMap = Object.fromEntries(cas.map(c => [c.id, c]));
+
+    return {
+        overall: {
+            inputTokens: totalStats._sum.inputTokens || 0,
+            outputTokens: totalStats._sum.outputTokens || 0,
+            totalTokens: (totalStats._sum.inputTokens || 0) + (totalStats._sum.outputTokens || 0),
+            imageCount: totalStats._sum.imageCount || 0,
+            requestCount: totalStats._count
+        },
+        perCA: perCaStats.map(s => ({
+            caId: s.caId,
+            inputTokens: s._sum.inputTokens || 0,
+            outputTokens: s._sum.outputTokens || 0,
+            imageCount: s._sum.imageCount || 0,
+            requestCount: s._count,
+            caName: caMap[s.caId]?.name || 'Unknown',
+            caEmail: caMap[s.caId]?.email || ''
+        }))
+    };
+};

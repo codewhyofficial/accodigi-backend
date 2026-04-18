@@ -1,4 +1,5 @@
 import * as adminService from '../services/admin.service.js';
+import * as creditService from '../services/credit.service.js';
 import catchAsync from '../utils/catchAsync.js';
 
 export const createAdmin = catchAsync(async (req, res, next) => {
@@ -109,6 +110,31 @@ export const deleteCA = catchAsync(async (req, res, next) => {
         status: 'success',
         data: null
     });
+}); export const getUsageStats = catchAsync(async (req, res, next) => {
+    const stats = await adminService.getUsageStats(req.query);
+    res.status(200).json({
+        status: 'success',
+        data: stats
+    });
 });
 
+export const getCACreditHistory = catchAsync(async (req, res, next) => {
+    const history = await creditService.getCAHistory(req.params.id);
+    res.status(200).json({
+        status: 'success',
+        data: { history }
+    });
+});
 
+export const adjustCACredits = catchAsync(async (req, res, next) => {
+    const { amount, description } = req.body;
+    const { updatedCA, transaction } = await creditService.adjustCredits(
+        req.params.id,
+        amount,
+        description
+    );
+    res.status(200).json({
+        status: 'success',
+        data: { ca: updatedCA, transaction }
+    });
+});
